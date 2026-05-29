@@ -40,13 +40,28 @@ Phase 4: Deploy     — Deploy all service stacks via docker stack deploy
 
 All configuration lives in this repository — single source of truth.
 
-- `ansible/inventory` — node hostnames and SSH credentials (populated at deploy time)
-- `secrets/*.txt` — plaintext secret values (consumed to create Docker Secrets)
-- `stacks/*/docker-compose.yml` — service definitions
-- `stacks/monitoring/grafana/provisioning/` — Grafana datasources and dashboards
-- `stacks/monitoring/telegraf/telegraf.conf` — Telegraf metrics collector config
+**Populated at deploy time (gitignored):**
+
+| File | Purpose | Source |
+|------|---------|--------|
+| `ansible/inventory` | Node hostnames, IPs, SSH usernames, SSH passwords | Provided by user before deployment |
+| `secrets/grafana_admin_password.txt` | Grafana admin password | Provided by user before deployment |
+| `secrets/influxdb_user_password.txt` | InfluxDB admin password | Provided by user before deployment |
+| `secrets/pihole_webpw.txt` | Pi-hole web interface password | Provided by user before deployment |
+
+**Committed to repo:**
+
+| File | Purpose |
+|------|---------|
+| `ansible/inventory.template` | Reference template for inventory format |
+| `secrets/*.txt.example` | Placeholder values — copy to `.txt` and edit |
+| `stacks/*/docker-compose.yml` | Service definitions |
+| `stacks/monitoring/grafana/provisioning/` | Grafana datasources and dashboards |
+| `stacks/monitoring/telegraf/telegraf.conf` | Telegraf metrics collector config |
 
 ## Repository Structure
+
+**Legend:** `🔒` = gitignored (populated at deploy time)
 
 ```
 swarm-infra/
@@ -54,21 +69,24 @@ swarm-infra/
 ├── README.md
 ├── provision-cluster.sh          # Master orchestration — runs all 4 phases
 ├── ansible/
-│   ├── inventory                 # ← POPULATED at deploy time (gitignored)
-│   ├── inventory.template        # Reference template
+│   ├── inventory                 # 🔒 POPULATED at deploy time (node credentials)
+│   ├── inventory.template        # Reference template (committed)
 │   ├── install_docker.yml
 │   ├── init_swarm.yml
 │   └── provision_gluster.yml
 ├── bootstrap/
-│   ├── authorized_keys.pub       # Generated during bootstrap
+│   ├── authorized_keys.pub       # Generated during bootstrap from control machine key
 │   └── bootstrap-node.sh         # SSH key distribution via sshpass
 ├── scripts/
 │   ├── deploy.sh                 # Phase 4 — stack deployment
 │   └── setup.sh                  # Phase 3 — labels, volumes, secrets
 ├── secrets/
-│   ├── grafana_admin_password.txt
-│   ├── influxdb_user_password.txt
-│   └── pihole_webpw.txt
+│   ├── grafana_admin_password.txt     # 🔒 POPULATED at deploy time
+│   ├── grafana_admin_password.txt.example
+│   ├── influxdb_user_password.txt     # 🔒 POPULATED at deploy time
+│   ├── influxdb_user_password.txt.example
+│   ├── pihole_webpw.txt               # 🔒 POPULATED at deploy time
+│   └── pihole_webpw.txt.example
 └── stacks/
     ├── ha/
     │   └── docker-compose.yml
