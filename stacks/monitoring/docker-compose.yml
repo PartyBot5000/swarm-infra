@@ -1,0 +1,67 @@
+# Monitoring Stack — InfluxDB, Grafana, Telegraf
+
+version: "3.8"
+
+services:
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - 8086:8086
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD_FILE: /run/secrets/influxdb_user_password
+      DOCKER_INFLUXDB_INIT_ORG: homelab
+      DOCKER_INFLUXDB_INIT_BUCKET: metrics
+    secrets:
+      - influxdb_user_password
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    secrets:
+      - grafana_admin_password
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: always
+
+  telegraf:
+    image: telegraf:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    mode: global
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: always
+
+volumes:
+  influxdb_data:
+    external: true
+  grafana_data:
+    external: true
+
+secrets:
+  influxdb_user_password:
+    external: true
+  grafana_admin_password:
+    external: true

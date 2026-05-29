@@ -1,0 +1,14 @@
+# Grafana Datasource Auto-Provisioning
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    access: proxy
+    database: metrics
+    url: http://influxdb:8086
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      organization: homelab

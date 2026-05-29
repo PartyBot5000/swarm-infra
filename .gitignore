@@ -1,0 +1,16 @@
+# Secrets — NEVER commit real credentials
+secrets/*.txt
+
+# Ansible
+ansible/facts.d
+ansible/.ansible_*
+
+# OS / editor
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

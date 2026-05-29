@@ -1,0 +1,60 @@
+---
+# Provision GlusterFS distributed storage
+- name: Provision GlusterFS
+  hosts: swarm
+  become: true
+  vars:
+    gluster_volume: swarm-storage
+    gluster_mount: /gluster-mount
+    gluster_bricks:
+      - node1:/srv/gluster/brick
+      - node2:/srv/gluster/brick
+      - node3:/srv/gluster/brick
+  tasks:
+    - name: Install GlusterFS
+      apt:
+        name: glusterfs-server
+        state: present
+      tags: [install]
+
+    - name: Ensure GlusterFS service is running
+      service:
+        name: glusterd
+        state: started
+        enabled: true
+      tags: [install]
+
+    - name: Create brick directory
+      file:
+        path: /srv/gluster/brick
+        state: directory
+        mode: '0755'
+      tags: [setup]
+
+    - name: Probe Gluster peers from node1
+      shell: >-
+        gluster peer probe {{ hostvars[item].ansible_host }}
+      loop:
+        - node2
+        - node3
+      when: inventory_hostname == 'node1'
+      tags: [volume]
+
+    - name: Create replicated volume from node1
+      shell: "gluster volume create {{ gluster_volume }} replica 3 {{ gluster_bricks | join(' ') }} force"
+      when: inventory_hostname == 'node1'
+      tags: [volume]
+
+    - name: Start GlusterFS volume
+      shell: gluster volume start {{ gluster_volume }}
+      when: inventory_hostname == 'node1'
+      tags: [volume]
+
+    - name: Add GlusterFS mount to /etc/fstab
+      mount:
+        src: localhost:/{{ gluster_volume }}
+        path: "{{ gluster_mount }}"
+        fstype: glusterfs
+        opts: defaults,_netdev
+        state: mounted
+      tags: [mount]

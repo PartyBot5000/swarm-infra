@@ -1,0 +1,29 @@
+# HA Stack — Keepalived VIP management
+# Manages virtual IP failover across manager nodes for host-mode services
+
+version: "3.8"
+
+services:
+  keepalived:
+    image: osixia/keepalived:latest
+    network_mode: host
+    mode: global
+    deploy:
+      placement:
+        constraints:
+          - node.labels.ha.candidate == true
+      resources:
+        limits:
+          memory: 128M
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+    environment:
+      # Adjust priority per node — node1 is master, node2/node3 are backups
+      KEEPALIVED_INTERFACE: eth0
+      KEEPALIVED_VIRTUAL_IPS: 192.168.1.100
+      KEEPALIVED_PRIORITY: "100"
+      KEEPALIVED_ROUTER_ID: "51"
+      # Override priority on backup nodes via node-specific labels or separate configs
+    restart: always

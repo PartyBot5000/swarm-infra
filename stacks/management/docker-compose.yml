@@ -1,0 +1,25 @@
+# Management Stack — Portainer CE
+
+version: "3.8"
+
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - 9000:9000
+      - 8000:8000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 512M
+    restart: always
+
+volumes:
+  portainer_data:
+    external: true

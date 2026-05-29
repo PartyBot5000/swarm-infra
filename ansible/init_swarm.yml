@@ -1,0 +1,42 @@
+---
+# Initialize Docker Swarm cluster
+- name: Initialize Swarm
+  hosts: swarm
+  become: true
+  vars:
+    manager_ip: 192.168.1.11
+  tasks:
+    - name: Initialise Swarm on node1
+      shell: docker swarm init --advertise-addr {{ manager_ip }}
+      when: inventory_hostname == 'node1'
+      register: swarm_init
+
+    - name: Extract manager join token
+      shell: docker swarm join-token -q manager
+      when: inventory_hostname == 'node1'
+      register: manager_token
+
+    - name: Extract worker join token
+      shell: docker swarm join-token -q worker
+      when: inventory_hostname == 'node1'
+      register: worker_token
+
+    - name: Set fact — manager token
+      set_fact:
+        swarm_manager_token: "{{ manager_token.stdout }}"
+      when: inventory_hostname == 'node1'
+
+    - name: Set fact — worker token
+      set_fact:
+        swarm_worker_token: "{{ worker_token.stdout }}"
+      when: inventory_hostname == 'node1'
+
+    - name: Join remaining managers
+      shell: "docker swarm join --token {{ hostvars['node1'].swarm_manager_token }} {{ manager_ip }}:2377"
+      when:
+        - inventory_hostname != 'node1'
+        - inventory_hostname in groups['managers']
+
+    - name: Join workers
+      shell: "docker swarm join --token {{ hostvars['node1'].swarm_worker_token }} {{ manager_ip }}:2377"
+      when: inventory_hostname in groups['workers']

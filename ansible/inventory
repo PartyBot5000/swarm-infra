@@ -1,0 +1,23 @@
+# Docker Swarm Cluster Inventory
+# Adjust IPs to match your network
+
+[managers]
+node1 ansible_host=192.168.1.11 ansible_user=ubuntu
+node2 ansible_host=192.168.1.12 ansible_user=ubuntu
+node3 ansible_host=192.168.1.13 ansible_user=ubuntu
+
+[workers]
+node4 ansible_host=192.168.1.14 ansible_user=ubuntu
+node5 ansible_host=192.168.1.15 ansible_user=ubuntu
+node6 ansible_host=192.168.1.16 ansible_user=ubuntu
+node7 ansible_host=192.168.1.17 ansible_user=ubuntu
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+
+[swarm:children]
+managers
+workers
+
+[gluster:children]
+managers
