@@ -1,33 +1,78 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bootstrap SSH key distribution from node1 to all other nodes.
-# Uses a temporary Python HTTP server on node1 to serve the public key,
-# then each node fetches and installs it via SSH.
+# Bootstrap SSH key distribution from control machine to all cluster nodes.
+# Accepts credentials from the Ansible inventory and uses sshpass to
+# push the control machine's public key to every node.
+#
+# Usage: ./bootstrap-node.sh /path/to/inventory
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PUB_KEY="${SCRIPT_DIR}/authorized_keys.pub"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-if [[ ! -f "${PUB_KEY}" ]]; then
-    echo "ERROR: ${PUB_KEY} not found. Generate one first."
+INVENTORY="${1:-${ROOT_DIR}/ansible/inventory}"
+
+if [[ ! -f "${INVENTORY}" ]]; then
+    echo "ERROR: Inventory not found at ${INVENTORY}"
     exit 1
 fi
 
-INVENTORY="${SCRIPT_DIR}/../ansible/inventory"
+# Generate control-machine SSH keypair if it doesn't exist
+SSH_KEY="${HOME}/.ssh/id_ed25519"
+if [[ ! -f "${SSH_KEY}" ]]; then
+    echo "Generating SSH keypair for control machine..."
+    ssh-keygen -t ed25519 -f "${SSH_KEY}" -N "" -q
+fi
+PUB_KEY="${SSH_KEY}.pub"
 
-echo "Distributing SSH public key to all nodes..."
+# Ensure sshpass is available (should be present in the ansible container)
+if ! command -v sshpass &>/dev/null; then
+    echo "ERROR: sshpass not found. Run from the ansible container."
+    exit 1
+fi
 
-# Parse IPs and users from the Ansible inventory
+echo "Distributing SSH public key to all cluster nodes..."
+echo "Control machine key: ${PUB_KEY}"
+echo ""
+
+FAILED=()
+
 while IFS= read -r line; do
-    host=$(echo "$line" | grep -oP 'ansible_host=\K[0-9.]+')
-    user=$(echo "$line" | grep -oP 'ansible_user=\K\w+')
+    # Skip comments and group headers
+    [[ "${line}" =~ ^#.*$ || "${line}" =~ ^\[.*\]$ || -z "${line}" ]] && continue
+
+    host=$(echo "${line}" | grep -oP 'ansible_host=\K\S+')
+    user=$(echo "${line}" | grep -oP 'ansible_user=\K\S+')
+    password=$(echo "${line}" | grep -oP 'ansible_password=\K\S+' || echo "")
+
     [[ -z "${host}" ]] && continue
 
-    echo "  -> ${user}@${host}"
-    # In a real deployment, use sshpass or an Expect script here
-    # to send the key without interactive password prompts.
-    # This is intentionally left as a placeholder.
-    # sshpass -p 'PASSWORD' ssh-copy-id "${user}@${host}"
-done < <(grep 'ansible_host' "${INVENTORY}")
+    echo "  → ${user}@${host} ..."
+    if sshpass -p "${password}" ssh-copy-id -o StrictHostKeyChecking=no "${user}@${host}" 2>/dev/null; then
+        echo "     ✓ SSH key installed"
+    else
+        echo "     ✗ FAILED — will retry later"
+        FAILED+=("${user}@${host}:${password}")
+    fi
+done < "${INVENTORY}"
 
-echo "SSH key distribution complete."
+# Retry failures
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+    echo ""
+    echo "Retrying failed nodes..."
+    for entry in "${FAILED[@]}"; do
+        user=$(echo "${entry}" | cut -d: -f1 | cut -d@ -f1)
+        host=$(echo "${entry}" | cut -d: -f1 | cut -d@ -f2)
+        password=$(echo "${entry}" | cut -d: -f2)
+
+        echo "  → ${user}@${host} (retry) ..."
+        if sshpass -p "${password}" ssh-copy-id -o StrictHostKeyChecking=no "${user}@${host}" 2>/dev/null; then
+            echo "     ✓ SSH key installed (retry)"
+        else
+            echo "     ✗ STILL FAILED — manual intervention required"
+        fi
+    done
+fi
+
+echo ""
+echo "Bootstrap complete. All nodes should now accept key-based SSH from the control machine."

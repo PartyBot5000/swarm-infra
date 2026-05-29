@@ -1,6 +1,9 @@
 # Secrets — NEVER commit real credentials
 secrets/*.txt
 
+# Inventory with populated credentials
+ansible/inventory
+
 # Ansible
 ansible/facts.d
 ansible/.ansible_*

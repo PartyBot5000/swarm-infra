@@ -1,0 +1,23 @@
+# Swarm Cluster Inventory — populate with your actual node details
+# Run: cp inventory.template inventory  (then edit)
+
+[managers]
+node1 ansible_host= ansible_user= ansible_password=
+node2 ansible_host= ansible_user= ansible_password=
+node3 ansible_host= ansible_user= ansible_password=
+
+[workers]
+node4 ansible_host= ansible_user= ansible_password=
+node5 ansible_host= ansible_user= ansible_password=
+node6 ansible_host= ansible_user= ansible_password=
+node7 ansible_host= ansible_user= ansible_password=
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+
+[swarm:children]
+managers
+workers
+
+[gluster:children]
+managers

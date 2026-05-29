@@ -1,1 +1,2 @@
-ssh-ed25519 AAAA...REPLACE_WITH_YOUR_PUBLIC_KEY... user@node1
+# This file is auto-generated during bootstrap from the control machine's SSH key.
+# No need to manually populate it.

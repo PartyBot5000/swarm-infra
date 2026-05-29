@@ -3,7 +3,13 @@
 - name: Install Docker
   hosts: swarm
   become: true
+  gather_facts: false
   tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
     - name: Install prerequisites
       apt:
         name:
@@ -12,7 +18,6 @@
           - gnupg
           - lsb-release
         state: present
-        update_cache: true
 
     - name: Add Docker GPG key
       apt_key:
@@ -21,12 +26,10 @@
 
     - name: Add Docker repository
       apt_repository:
-        repo: >-
-          deb [arch=amd64] https://download.docker.com/linux/ubuntu
-          {{ ansible_distribution_release }} stable
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
         state: present
 
-    - name: Install Docker Engine
+    - name: Install Docker Engine and plugins
       apt:
         name:
           - docker-ce
@@ -42,7 +45,7 @@
         state: started
         enabled: true
 
-    - name: Add ubuntu user to docker group
+    - name: Add user to docker group
       user:
         name: "{{ ansible_user }}"
         groups: docker
